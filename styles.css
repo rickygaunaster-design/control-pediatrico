@@ -1,0 +1,250 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap');
+
+:root {
+  --bg: #F6F5F0;
+  --surface: #FFFFFF;
+  --surface-sunken: #EEEDE6;
+  --ink: #21332E;
+  --ink-soft: #5B6B65;
+  --border: #DEDBD0;
+  --primary: #2F6F62;
+  --primary-dark: #1F4D43;
+  --primary-tint: #E4EEEB;
+  --accent: #D98C4A;
+  --accent-tint: #FBEADB;
+  --danger: #C0524B;
+  --danger-tint: #F7E4E2;
+  --info: #4A7BA6;
+  --info-tint: #E4ECF3;
+  --radius: 14px;
+  --shadow: 0 1px 2px rgba(33,51,46,0.06), 0 4px 14px rgba(33,51,46,0.06);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+h1, h2, h3, .display {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--primary-dark);
+  margin: 0;
+}
+
+.eyebrow {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+a { color: inherit; }
+
+/* ---- App shell ---- */
+#app { flex: 1; display: flex; flex-direction: column; max-width: 560px; margin: 0 auto; width: 100%; }
+
+header.topbar {
+  position: sticky; top: 0; z-index: 10;
+  background: var(--bg);
+  padding: 18px 18px 10px;
+  display: flex; align-items: center; gap: 10px;
+  border-bottom: 1px solid transparent;
+}
+header.topbar.scrolled { border-bottom-color: var(--border); }
+
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand svg { flex-shrink: 0; }
+.brand-text .display { font-size: 20px; line-height: 1; }
+.brand-text .eyebrow { margin-top: 2px; }
+
+.back-btn {
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 1px solid var(--border); background: var(--surface);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; color: var(--primary-dark);
+}
+
+main { flex: 1; padding: 8px 18px 100px; }
+
+/* ---- Search + list ---- */
+.searchbar {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 999px; padding: 10px 16px; margin: 8px 0 16px;
+}
+.searchbar input {
+  border: none; outline: none; background: transparent;
+  font-size: 15px; flex: 1; color: var(--ink); font-family: inherit;
+}
+.searchbar input::placeholder { color: var(--ink-soft); }
+
+.patient-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px 16px; margin-bottom: 10px;
+  display: flex; align-items: center; gap: 12px; box-shadow: var(--shadow);
+}
+.patient-card .avatar {
+  width: 42px; height: 42px; border-radius: 50%;
+  background: var(--primary-tint); color: var(--primary-dark);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces', serif; font-weight: 600; font-size: 16px; flex-shrink: 0;
+}
+.patient-card .info { flex: 1; min-width: 0; }
+.patient-card .info .name { font-family: 'Fraunces', serif; font-weight: 600; font-size: 16.5px; }
+.patient-card .info .meta { font-size: 13px; color: var(--ink-soft); margin-top: 2px; }
+.patient-card .chev { color: var(--ink-soft); font-size: 18px; }
+
+.empty-state {
+  text-align: center; padding: 60px 20px; color: var(--ink-soft);
+}
+.empty-state svg { margin-bottom: 14px; opacity: 0.8; }
+.empty-state .display { font-size: 19px; margin-bottom: 6px; color: var(--primary-dark); }
+
+/* ---- FAB ---- */
+.fab {
+  position: fixed; bottom: 24px; left: 50%;
+  transform: translateX(calc(-50% + 240px));
+  width: 56px; height: 56px; border-radius: 50%;
+  background: var(--primary); color: #fff; border: none;
+  font-size: 26px; box-shadow: 0 6px 18px rgba(47,111,98,0.35);
+  display: flex; align-items: center; justify-content: center; z-index: 20;
+}
+@media (max-width: 599px) { .fab { transform: none; right: 20px; left: auto; } }
+
+/* ---- Tabs ---- */
+.tabs { display: flex; gap: 6px; margin: 10px 0 16px; background: var(--surface-sunken); padding: 4px; border-radius: 999px; }
+.tabs button {
+  flex: 1; border: none; background: transparent; padding: 9px 6px;
+  border-radius: 999px; font-size: 13.5px; font-weight: 600; color: var(--ink-soft);
+}
+.tabs button.active { background: var(--surface); color: var(--primary-dark); box-shadow: var(--shadow); }
+
+/* ---- Cards / sections ---- */
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px; margin-bottom: 14px; box-shadow: var(--shadow);
+}
+.card h3 { font-size: 16px; margin-bottom: 10px; }
+.field-row { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-bottom: 1px dashed var(--border); font-size: 14.5px; }
+.field-row:last-child { border-bottom: none; }
+.field-row .label { color: var(--ink-soft); }
+.field-row .value { font-weight: 500; text-align: right; }
+.tag { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+.tag.warn { background: var(--danger-tint); color: var(--danger); }
+.tag.ok { background: var(--primary-tint); color: var(--primary-dark); }
+
+/* ---- Timeline (historia clínica) ---- */
+.timeline-item {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 14px 16px; margin-bottom: 10px; box-shadow: var(--shadow);
+}
+.timeline-item .top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.timeline-item .date { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--ink-soft); }
+.timeline-item .text { font-size: 14.5px; line-height: 1.5; white-space: pre-wrap; }
+.timeline-item .vitals { margin-top: 8px; display: flex; gap: 14px; font-size: 12.5px; color: var(--ink-soft); }
+
+.pill { padding: 3px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 700; letter-spacing: 0.01em; }
+.pill.control { background: var(--primary-tint); color: var(--primary-dark); }
+.pill.enfermedad { background: var(--accent-tint); color: #A05A1D; }
+.pill.tratamiento { background: var(--info-tint); color: var(--info); }
+.pill.urgencia { background: var(--danger-tint); color: var(--danger); }
+
+/* ---- Forms ---- */
+.form-group { margin-bottom: 14px; }
+.form-group label { display: block; font-size: 13px; font-weight: 600; color: var(--ink-soft); margin-bottom: 6px; }
+.form-group input[type=text], .form-group input[type=tel], .form-group input[type=date],
+.form-group input[type=number], .form-group select, .form-group textarea {
+  width: 100%; border: 1px solid var(--border); border-radius: 10px; padding: 11px 12px;
+  font-size: 15px; font-family: inherit; background: var(--surface); color: var(--ink);
+}
+.form-group textarea { min-height: 100px; resize: vertical; }
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+  outline: 2px solid var(--primary); outline-offset: 1px; border-color: var(--primary);
+}
+.row2 { display: flex; gap: 10px; }
+.row2 > * { flex: 1; }
+
+.dictate-wrap { position: relative; }
+.dictate-btn {
+  position: absolute; right: 8px; bottom: 8px;
+  width: 34px; height: 34px; border-radius: 50%; border: none;
+  background: var(--primary-tint); color: var(--primary-dark); font-size: 15px;
+  display: flex; align-items: center; justify-content: center;
+}
+.dictate-btn.listening { background: var(--danger); color: #fff; animation: pulse 1.2s infinite; }
+@keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(192,82,75,0.4);} 50% { box-shadow: 0 0 0 8px rgba(192,82,75,0);} }
+
+.tutor-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: flex-end; }
+.tutor-row .form-group { flex: 1; margin-bottom: 0; }
+.icon-btn { border: 1px solid var(--border); background: var(--surface); border-radius: 10px; width: 42px; height: 42px; font-size: 16px; color: var(--danger); flex-shrink: 0; }
+.link-btn { border: none; background: none; color: var(--primary-dark); font-weight: 600; font-size: 14px; padding: 8px 0; }
+
+.btn { border: none; border-radius: 12px; padding: 13px 18px; font-size: 15px; font-weight: 600; width: 100%; }
+.btn.primary { background: var(--primary); color: #fff; }
+.btn.ghost { background: var(--surface-sunken); color: var(--ink); }
+.btn.danger { background: var(--danger-tint); color: var(--danger); }
+.btn-row { display: flex; gap: 10px; margin-top: 18px; }
+.btn-row .btn { width: auto; flex: 1; }
+
+/* ---- Vacunas ---- */
+.vax-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.vax-item:last-child { border-bottom: none; }
+.vax-check {
+  width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--border);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 13px; color: #fff;
+}
+.vax-check.done { background: var(--primary); border-color: var(--primary); }
+.vax-info { flex: 1; }
+.vax-info .name { font-size: 14.5px; font-weight: 500; }
+.vax-info .dose { font-size: 12px; color: var(--ink-soft); }
+.vax-date { font-size: 12.5px; color: var(--ink-soft); font-family: 'IBM Plex Mono', monospace; }
+
+/* ---- Settings / sync ---- */
+.sync-box {
+  background: var(--primary-tint); border-radius: var(--radius); padding: 16px; margin-bottom: 14px;
+}
+.sync-box p { font-size: 13.5px; color: var(--primary-dark); line-height: 1.5; margin: 0 0 12px; }
+
+/* ---- Modal ---- */
+.modal-backdrop {
+  position: fixed; inset: 0; background: rgba(33,51,46,0.45); z-index: 50;
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.modal {
+  background: var(--bg); width: 100%; max-width: 560px; max-height: 92vh; overflow-y: auto;
+  border-radius: 22px 22px 0 0; padding: 22px 20px 30px; animation: slideup 0.25s ease-out;
+}
+@keyframes slideup { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.modal-header .display { font-size: 19px; }
+.close-btn { width: 34px; height: 34px; border-radius: 50%; border: none; background: var(--surface-sunken); font-size: 16px; }
+
+.toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: var(--ink); color: #fff; padding: 12px 20px; border-radius: 999px;
+  font-size: 13.5px; box-shadow: var(--shadow); z-index: 100; opacity: 0; pointer-events: none;
+  transition: opacity 0.25s, transform 0.25s;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(-6px); }
+
+::selection { background: var(--accent-tint); }
