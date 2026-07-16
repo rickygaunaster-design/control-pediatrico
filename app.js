@@ -69,6 +69,17 @@ function calcEdad(fechaNacISO) {
   return `${years} años`;
 }
 
+function addMonths(dateISO, months) {
+  if (!dateISO) return null;
+  const d = new Date(dateISO + 'T00:00:00');
+  d.setMonth(d.getMonth() + months);
+  return d.toISOString().slice(0, 10);
+}
+function diasEntre(isoA, isoB) {
+  const a = new Date(isoA + 'T00:00:00'), b = new Date(isoB + 'T00:00:00');
+  return Math.round((b - a) / 86400000);
+}
+
 function initials(nombre, apellido) {
   return ((nombre?.[0] || '') + (apellido?.[0] || '')).toUpperCase();
 }
@@ -84,19 +95,43 @@ function toast(msg) {
 
 // ==================== Plantilla de vacunación (calendario AR, editable) ====================
 function vacunasDefault() {
+  // [vacuna, dosis, offsetMeses desde nacimiento, recurrente]
   const items = [
-    ['BCG', 'Nacimiento'], ['Hepatitis B', 'Nacimiento'],
-    ['Pentavalente', '2 meses'], ['Pentavalente', '4 meses'], ['Pentavalente', '6 meses'],
-    ['Neumococo conjugada', '2 meses'], ['Neumococo conjugada', '4 meses'], ['Neumococo conjugada', '12 meses'],
-    ['Polio (IPV)', '2 meses'], ['Polio (IPV)', '4 meses'], ['Polio (IPV/OPV)', '6 meses'],
-    ['Rotavirus', '2 meses'], ['Rotavirus', '4 meses'],
-    ['Meningococo', '3 meses'], ['Meningococo', '5 meses'], ['Meningococo', '15 meses'],
-    ['Triple viral (SRP)', '12 meses'], ['Hepatitis A', '12 meses'], ['Varicela', '15 meses'],
-    ['Refuerzo Cuádruple/DTP', '15-18 meses'], ['Refuerzo Polio', '15-18 meses'],
-    ['Refuerzo Triple viral', 'Ingreso escolar (5-6 años)'], ['Refuerzo DTP', 'Ingreso escolar (5-6 años)'],
-    ['VPH', '11 años'], ['Triple bacteriana (dTpa)', '11 años'], ['Gripe', 'Anual desde 6 meses'],
+    ['BCG', 'Nacimiento', 0], ['Hepatitis B', 'Nacimiento', 0],
+    ['Pentavalente', '2 meses', 2], ['Pentavalente', '4 meses', 4], ['Pentavalente', '6 meses', 6],
+    ['Neumococo conjugada', '2 meses', 2], ['Neumococo conjugada', '4 meses', 4], ['Neumococo conjugada', '12 meses', 12],
+    ['Polio (IPV)', '2 meses', 2], ['Polio (IPV)', '4 meses', 4], ['Polio (IPV/OPV)', '6 meses', 6],
+    ['Rotavirus', '2 meses', 2], ['Rotavirus', '4 meses', 4],
+    ['Meningococo', '3 meses', 3], ['Meningococo', '5 meses', 5], ['Meningococo', '15 meses', 15],
+    ['Triple viral (SRP)', '12 meses', 12], ['Hepatitis A', '12 meses', 12], ['Varicela', '15 meses', 15],
+    ['Refuerzo Cuádruple/DTP', '15-18 meses', 18], ['Refuerzo Polio', '15-18 meses', 18],
+    ['Refuerzo Triple viral', 'Ingreso escolar (5-6 años)', 60], ['Refuerzo DTP', 'Ingreso escolar (5-6 años)', 60],
+    ['VPH', '11 años', 132], ['Triple bacteriana (dTpa)', '11 años', 132],
+    ['Gripe', 'Anual desde 6 meses', 6, true],
   ];
-  return items.map(([vacuna, dosis]) => ({ id: uid(), vacuna, dosis, aplicada: false, fecha: null }));
+  return items.map(([vacuna, dosis, offsetMeses, recurrente]) => ({
+    id: uid(), vacuna, dosis, offsetMeses, recurrente: !!recurrente, aplicada: false, fecha: null,
+  }));
+}
+
+// Calcula el estado de una dosis: si está vencida y hace cuántos días
+function estadoVacuna(paciente, v) {
+  if (!paciente.fechaNacimiento) return { vencida: false };
+  const hoy = todayInput();
+  if (!v.aplicada) {
+    const esperada = addMonths(paciente.fechaNacimiento, v.offsetMeses || 0);
+    if (esperada && esperada < hoy) return { vencida: true, dias: diasEntre(esperada, hoy), tipo: 'pendiente' };
+    return { vencida: false };
+  }
+  if (v.recurrente && v.fecha) {
+    const proxima = addMonths(v.fecha, 12);
+    if (proxima < hoy) return { vencida: true, dias: diasEntre(proxima, hoy), tipo: 'refuerzo' };
+  }
+  return { vencida: false };
+}
+
+function vacunasVencidas(paciente) {
+  return paciente.vacunas.filter(v => estadoVacuna(paciente, v).vencida);
 }
 
 // ==================== Modelo de paciente nuevo ====================
@@ -147,7 +182,10 @@ function renderList() {
     return !q || `${p.nombre} ${p.apellido}`.toLowerCase().includes(q);
   });
 
+  const totalVencidas = state.patients.reduce((sum, p) => sum + vacunasVencidas(p).length, 0);
+
   main.innerHTML = `
+    ${totalVencidas ? `<div class="reminder-banner">⚠ ${totalVencidas} dosis de vacuna vencida${totalVencidas === 1 ? '' : 's'} entre tus pacientes</div>` : ''}
     <div class="searchbar">
       <span>🔍</span>
       <input id="search-input" type="text" placeholder="Buscar paciente..." value="${escapeAttr(state.search)}" />
@@ -181,16 +219,21 @@ function renderListItemsInto(list) {
       </div>`;
     return;
   }
-  container.innerHTML = list.map(p => `
+  container.innerHTML = list.map(p => {
+    const vencidas = vacunasVencidas(p).length;
+    return `
     <div class="patient-card" data-id="${p.id}">
       <div class="avatar">${initials(p.nombre, p.apellido)}</div>
       <div class="info">
         <div class="name">${escapeHtml(p.nombre)} ${escapeHtml(p.apellido)}</div>
-        <div class="meta">${calcEdad(p.fechaNacimiento)} · ${p.historia.length} registro${p.historia.length === 1 ? '' : 's'}</div>
+        <div class="meta">${calcEdad(p.fechaNacimiento)} · ${p.historia.length} registro${p.historia.length === 1 ? '' : 's'}
+          ${vencidas ? `<span class="meta-warn">⚠ ${vencidas} vacuna${vencidas === 1 ? '' : 's'} vencida${vencidas === 1 ? '' : 's'}</span>` : ''}
+        </div>
       </div>
       <div class="chev">›</div>
     </div>
-  `).join('');
+  `;
+  }).join('');
   container.querySelectorAll('.patient-card').forEach(el => {
     el.onclick = () => { state.currentId = el.dataset.id; state.view = 'detail'; state.tab = 'datos'; render(); window.scrollTo(0, 0); };
   });
@@ -212,6 +255,7 @@ function renderDetail() {
   main.innerHTML = `
     <div class="tabs">
       <button data-tab="datos" class="${state.tab === 'datos' ? 'active' : ''}">Datos</button>
+      <button data-tab="crecimiento" class="${state.tab === 'crecimiento' ? 'active' : ''}">Crecimiento</button>
       <button data-tab="vacunas" class="${state.tab === 'vacunas' ? 'active' : ''}">Vacunación</button>
       <button data-tab="historia" class="${state.tab === 'historia' ? 'active' : ''}">Historia clínica</button>
     </div>
@@ -221,12 +265,14 @@ function renderDetail() {
 
   const content = document.getElementById('tab-content');
   if (state.tab === 'datos') content.innerHTML = renderDatosTab(p);
+  else if (state.tab === 'crecimiento') content.innerHTML = renderCrecimientoTab(p);
   else if (state.tab === 'vacunas') content.innerHTML = renderVacunasTab(p);
   else content.innerHTML = renderHistoriaTab(p);
 
   if (state.tab === 'datos') {
     content.insertAdjacentHTML('beforeend', `<button class="fab" id="btn-edit" title="Editar datos">✎</button>`);
     document.getElementById('btn-edit').onclick = () => openPatientForm(p.id);
+    document.getElementById('btn-pdf').onclick = () => exportarFichaPDF(p);
   } else if (state.tab === 'vacunas') {
     content.querySelectorAll('.vax-item').forEach(el => {
       el.onclick = () => toggleVacuna(p.id, el.dataset.id);
@@ -259,19 +305,72 @@ function renderDatosTab(p) {
       <div class="field-row"><span class="label">Tipo de parto</span><span class="value">${p.antecedentes.tipoParto || '—'}</span></div>
       <div class="field-row"><span class="label">Peso al nacer</span><span class="value">${p.antecedentes.pesoNacer ? p.antecedentes.pesoNacer + ' g' : '—'}</span></div>
     </div>
+    <button class="btn ghost" id="btn-pdf">📄 Exportar ficha en PDF</button>
   `;
 }
 
 function renderVacunasTab(p) {
-  const rows = p.vacunas.map(v => `
+  const conEstado = p.vacunas.map(v => ({ v, estado: estadoVacuna(p, v) }));
+  conEstado.sort((a, b) => (b.estado.vencida - a.estado.vencida));
+
+  const rows = conEstado.map(({ v, estado }) => `
     <div class="vax-item" data-id="${v.id}">
-      <div class="vax-check ${v.aplicada ? 'done' : ''}">${v.aplicada ? '✓' : ''}</div>
-      <div class="vax-info"><div class="name">${escapeHtml(v.vacuna)}</div><div class="dose">${escapeHtml(v.dosis)}</div></div>
+      <div class="vax-check ${v.aplicada ? 'done' : ''} ${estado.vencida ? 'overdue' : ''}">${v.aplicada ? '✓' : (estado.vencida ? '!' : '')}</div>
+      <div class="vax-info">
+        <div class="name">${escapeHtml(v.vacuna)}</div>
+        <div class="dose">${escapeHtml(v.dosis)}${estado.vencida ? ` · <span class="overdue-text">${estado.tipo === 'refuerzo' ? 'Refuerzo pendiente' : 'Vencida'} hace ${estado.dias} día${estado.dias === 1 ? '' : 's'}</span>` : ''}</div>
+      </div>
       <div class="vax-date">${v.aplicada ? fmtDate(v.fecha) : ''}</div>
     </div>
   `).join('');
   return `<div class="card"><h3>Calendario de vacunación</h3>${rows}</div>
-    <p style="text-align:center;color:var(--ink-soft);font-size:12.5px">Tocá una vacuna para marcarla como aplicada</p>`;
+    <p style="text-align:center;color:var(--ink-soft);font-size:12.5px">Tocá una vacuna para marcarla como aplicada. Las fechas esperadas se calculan a partir de la fecha de nacimiento.</p>`;
+}
+
+// ==================== Curva de crecimiento ====================
+function buildChart(points, opts) {
+  const W = 300, H = 130, padL = 36, padR = 12, padT = 14, padB = 22;
+  const times = points.map(p => new Date(p.fecha + 'T00:00:00').getTime());
+  const values = points.map(p => p.valor);
+  const minT = Math.min(...times), maxT = Math.max(...times);
+  const minV = Math.min(...values), maxV = Math.max(...values);
+  const padV = (maxV - minV) * 0.2 || Math.max(maxV * 0.1, 1);
+  const yMin = minV - padV, yMax = maxV + padV;
+  const xScale = (t) => padL + (maxT === minT ? (W - padL - padR) / 2 : ((t - minT) / (maxT - minT)) * (W - padL - padR));
+  const yScale = (v) => padT + (1 - (v - yMin) / (yMax - yMin)) * (H - padT - padB);
+
+  const coords = points.map((p, i) => [xScale(times[i]), yScale(values[i])]);
+  const line = coords.map((c) => c.join(',')).join(' ');
+  const area = `${padL},${H - padB} ${line} ${coords[coords.length - 1][0]},${H - padB}`;
+  const dots = coords.map((c, i) => `<circle cx="${c[0].toFixed(1)}" cy="${c[1].toFixed(1)}" r="3.2" fill="${opts.color}"><title>${fmtDate(points[i].fecha)}: ${points[i].valor}${opts.unit}</title></circle>`).join('');
+
+  return `
+    <svg viewBox="0 0 ${W} ${H}" width="100%" height="150" preserveAspectRatio="xMidYMid meet">
+      <text x="${padL}" y="${padT + 4}" font-size="9" fill="#5B6B65" font-family="IBM Plex Mono, monospace">${yMax.toFixed(1)}${opts.unit}</text>
+      <text x="${padL}" y="${H - padB}" font-size="9" fill="#5B6B65" font-family="IBM Plex Mono, monospace">${yMin.toFixed(1)}${opts.unit}</text>
+      <line x1="${padL}" y1="${H - padB}" x2="${W - padR}" y2="${H - padB}" stroke="#DEDBD0" stroke-width="1"/>
+      <polygon points="${area}" fill="${opts.color}" fill-opacity="0.12"/>
+      <polyline points="${line}" fill="none" stroke="${opts.color}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+      ${dots}
+      <text x="${padL}" y="${H - 5}" font-size="9" fill="#5B6B65" font-family="IBM Plex Mono, monospace">${fmtDate(points[0].fecha)}</text>
+      <text x="${W - padR}" y="${H - 5}" font-size="9" fill="#5B6B65" font-family="IBM Plex Mono, monospace" text-anchor="end">${fmtDate(points[points.length - 1].fecha)}</text>
+    </svg>`;
+}
+
+function renderCrecimientoTab(p) {
+  const entries = [...p.historia].sort((a, b) => a.fecha.localeCompare(b.fecha));
+  const pesos = entries.filter(e => e.peso).map(e => ({ fecha: e.fecha, valor: parseFloat(e.peso) }));
+  const tallas = entries.filter(e => e.talla).map(e => ({ fecha: e.fecha, valor: parseFloat(e.talla) }));
+
+  const pesoBlock = pesos.length >= 2
+    ? `<div class="card"><h3>Peso (kg)</h3>${buildChart(pesos, { color: '#2F6F62', unit: 'kg' })}</div>`
+    : `<div class="card"><h3>Peso (kg)</h3><p class="chart-empty">Cargá peso en al menos 2 registros de la historia clínica para ver la curva.</p></div>`;
+
+  const tallaBlock = tallas.length >= 2
+    ? `<div class="card"><h3>Talla (cm)</h3>${buildChart(tallas, { color: '#D98C4A', unit: 'cm' })}</div>`
+    : `<div class="card"><h3>Talla (cm)</h3><p class="chart-empty">Cargá talla en al menos 2 registros de la historia clínica para ver la curva.</p></div>`;
+
+  return pesoBlock + tallaBlock;
 }
 
 function renderHistoriaTab(p) {
@@ -298,6 +397,10 @@ async function toggleVacuna(patientId, vaxId) {
   if (!v.aplicada) {
     v.aplicada = true;
     v.fecha = todayInput();
+  } else if (v.recurrente && estadoVacuna(p, v).vencida) {
+    // Refuerzo anual pendiente: registrar la nueva dosis en vez de desmarcar
+    v.fecha = todayInput();
+    toast('Refuerzo registrado');
   } else {
     v.aplicada = false;
     v.fecha = null;
@@ -586,6 +689,39 @@ function importarDatos(file, modal) {
     toast(`Importado: ${nuevos} nuevo/s, ${actualizados} actualizado/s`);
   };
   reader.readAsText(file);
+}
+
+// ==================== Exportar ficha en PDF (vía impresión del navegador) ====================
+function exportarFichaPDF(p) {
+  const entries = [...p.historia].sort((a, b) => b.fecha.localeCompare(a.fecha));
+  const vacunasHtml = p.vacunas.map(v => {
+    const estado = estadoVacuna(p, v);
+    let estadoTxt = v.aplicada ? `Aplicada ${fmtDate(v.fecha)}` : 'Pendiente';
+    if (estado.vencida) estadoTxt = (estado.tipo === 'refuerzo' ? 'Refuerzo pendiente' : 'Vencida') + ` (hace ${estado.dias} días)`;
+    return `<tr><td>${escapeHtml(v.vacuna)}</td><td>${escapeHtml(v.dosis)}</td><td>${estadoTxt}</td></tr>`;
+  }).join('');
+
+  const historiaHtml = entries.length ? entries.map(e => `
+    <div class="p-entry">
+      <div class="p-entry-top"><strong>${fmtDate(e.fecha)}</strong> — ${tipoLabel(e.tipo)}${(e.peso || e.talla) ? ` (${e.peso ? e.peso + ' kg' : ''}${e.peso && e.talla ? ', ' : ''}${e.talla ? e.talla + ' cm' : ''})` : ''}</div>
+      <div>${escapeHtml(e.texto)}</div>
+    </div>`).join('') : '<p>Sin registros.</p>';
+
+  const html = `
+    <h1>${escapeHtml(p.nombre)} ${escapeHtml(p.apellido)}</h1>
+    <p class="p-sub">Fecha de nacimiento: ${fmtDate(p.fechaNacimiento)} · Edad: ${calcEdad(p.fechaNacimiento)} · Grupo sanguíneo: ${p.grupoSanguineo || '—'}</p>
+    <p class="p-sub">Alergias: ${p.alergias ? escapeHtml(p.alergias) : 'Sin alergias registradas'}</p>
+    <p class="p-sub">Obra social: ${p.obraSocial.tiene ? escapeHtml(p.obraSocial.nombre || 'Sí') : 'No'}</p>
+    <p class="p-sub">Tutor/es: ${p.tutores.map(t => `${escapeHtml(t.nombre)} (${escapeHtml(t.telefono)})`).join(' · ')}</p>
+    <p class="p-sub">Antecedentes de nacimiento: ${p.antecedentes.tipoParto || '—'}${p.antecedentes.pesoNacer ? ', ' + p.antecedentes.pesoNacer + ' g al nacer' : ''}</p>
+    <h2>Calendario de vacunación</h2>
+    <table class="p-table"><thead><tr><th>Vacuna</th><th>Dosis</th><th>Estado</th></tr></thead><tbody>${vacunasHtml}</tbody></table>
+    <h2>Historia clínica</h2>
+    ${historiaHtml}
+    <p class="p-footer">Ficha generada el ${fmtDate(todayInput())} — Control Pediátrico</p>
+  `;
+  document.getElementById('print-area').innerHTML = html;
+  setTimeout(() => window.print(), 80);
 }
 
 // ==================== Helpers de escape ====================
